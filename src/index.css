@@ -15,7 +15,7 @@ body {
 }
 
 .app {
-  max-width: 28rem;
+  max-width: 36rem;
   margin: 0 auto;
   padding: 2rem 1.25rem;
   text-align: center;
@@ -51,6 +51,15 @@ h1 {
   color: #ff6b6b;
 }
 
+.errors {
+  margin-bottom: 1rem;
+}
+
+.error-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
 button {
   margin-top: 1rem;
   padding: 0.65rem 1.25rem;
@@ -70,4 +79,86 @@ button.primary {
 
 button:hover {
   filter: brightness(1.08);
+}
+
+.library {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.library h2 {
+  font-size: 1.25rem;
+  margin: 0 0 0.25rem;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.stat {
+  background: #181818;
+  border-radius: 10px;
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #b3b3b3;
+  margin-top: 0.15rem;
+}
+
+.details {
+  background: #181818;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.source-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.source-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #282828;
+  font-size: 0.9rem;
+}
+
+.source-list li:last-child {
+  border-bottom: none;
+}
+
+.source-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-count {
+  color: #b3b3b3;
+  flex-shrink: 0;
 }

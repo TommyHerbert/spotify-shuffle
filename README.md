@@ -2,9 +2,15 @@
 
 Play a random song from your albums, playlists, and liked songs — inspired by classic iPod shuffle.
 
-## Current status: Hello World
+## Current status: Library stats
 
-A minimal web app that proves Spotify login works. After signing in, it shows your Spotify display name. That's the foundation for fetching libraries and playing tracks in later steps.
+After signing in, the app loads counts for your shuffle sources:
+
+- Total liked songs
+- Each saved album and its track count
+- Each playlist and its track count
+
+This is the metadata needed to pick a random track without downloading every song up front.
 
 ## Stack
 
@@ -38,7 +44,7 @@ npm install
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173** (not `localhost`), click **Log in with Spotify**, approve access, and you should see your name.
+Open **http://127.0.0.1:5173** (not `localhost`), click **Log in with Spotify**, approve access, and you should see your library stats.
 
 ## Environment
 
@@ -52,8 +58,7 @@ Do **not** put your client secret in this project — the web app doesn't need i
 
 ## Next steps
 
-1. Fetch saved albums, playlists, and liked tracks
-2. Pick a random track from the combined library
-3. Start playback via Spotify Web API / Web Playback SDK
-4. Add mobile builds (Expo or Capacitor)
+1. Pick a random track from the combined library
+2. Start playback via Spotify Web API / Web Playback SDK
+3. Add mobile builds (Expo or Capacitor)
 

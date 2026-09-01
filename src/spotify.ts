@@ -1,6 +1,11 @@
 const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
-const SCOPES = ["user-read-private", "user-read-email"].join(" ");
+const SCOPES = [
+  "user-read-private",
+  "user-read-email",
+  "user-library-read",
+  "playlist-read-private",
+].join(" ");
 
 export const REDIRECT_URI =
   typeof window !== "undefined"
