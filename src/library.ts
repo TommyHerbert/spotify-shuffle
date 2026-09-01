@@ -62,7 +62,7 @@ async function spotifyGet<T>(
   return response.json();
 }
 
-async function spotifyGetWithRetry<T>(
+export async function spotifyGetWithRetry<T>(
   accessToken: string,
   path: string,
   params: Record<string, string> = {},
@@ -149,6 +149,7 @@ export type PlaylistSummary = {
   id: string;
   name: string;
   trackCount: number;
+  shufflable: boolean;
 };
 
 export type LibraryStats = {
@@ -164,6 +165,7 @@ export type LibraryFetchResult = {
 
 export async function fetchLibraryStats(
   accessToken: string,
+  userId: string,
 ): Promise<LibraryFetchResult> {
   const errors: string[] = [];
 
@@ -178,6 +180,8 @@ export async function fetchLibraryStats(
     fetchAllPages<{
       id: string;
       name: string;
+      collaborative: boolean;
+      owner: { id: string };
       items?: { total: number };
       tracks?: { total: number };
     }>(accessToken, "/me/playlists"),
@@ -207,9 +211,18 @@ export async function fetchLibraryStats(
       id: playlist.id,
       name: playlist.name,
       trackCount: playlist.items?.total ?? playlist.tracks?.total ?? 0,
+      shufflable:
+        playlist.owner.id === userId || playlist.collaborative,
     }));
     if (playlistsResult.value.partial) {
       errors.push(formatPartialError("playlists", playlistsResult.value));
+    }
+
+    const skipped = playlists.filter((playlist) => !playlist.shufflable).length;
+    if (skipped > 0) {
+      console.info(
+        `[spotify-shuffle] ${skipped} followed playlist(s) excluded from shuffle (not owned/collaborative)`,
+      );
     }
   } else {
     errors.push(formatFetchError("playlists", playlistsResult.reason));
@@ -258,5 +271,11 @@ export function totalAlbumTracks(albums: AlbumSummary[]): number {
 }
 
 export function totalPlaylistTracks(playlists: PlaylistSummary[]): number {
-  return playlists.reduce((sum, playlist) => sum + playlist.trackCount, 0);
+  return playlists
+    .filter((playlist) => playlist.shufflable)
+    .reduce((sum, playlist) => sum + playlist.trackCount, 0);
+}
+
+export function shufflablePlaylistCount(playlists: PlaylistSummary[]): number {
+  return playlists.filter((playlist) => playlist.shufflable).length;
 }

@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LibraryStats,
   fetchLibraryStats,
+  shufflablePlaylistCount,
   totalAlbumTracks,
   totalPlaylistTracks,
 } from "./library";
+import { ShuffledTrack, pickRandomTrack, totalPoolSize } from "./shuffle";
 import {
   SpotifyProfile,
   beginLogin,
@@ -63,15 +65,77 @@ function CallbackPage({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+function ShuffleView({
+  library,
+  onShuffle,
+  shuffling,
+  track,
+}: {
+  library: LibraryStats;
+  onShuffle: () => void;
+  shuffling: boolean;
+  track: ShuffledTrack | null;
+}) {
+  const poolSize = totalPoolSize(library);
+  const shufflePlaylists = shufflablePlaylistCount(library.playlists);
+  const skippedPlaylists = library.playlists.length - shufflePlaylists;
+
+  return (
+    <section className="shuffle">
+      <h2>Shuffle</h2>
+      <p className="muted">
+        {poolSize.toLocaleString()} tracks in the pool (liked songs, album
+        tracks, and your own playlist tracks).
+        {skippedPlaylists > 0 &&
+          ` ${skippedPlaylists} followed playlist(s) excluded — Spotify only allows shuffling playlists you own or collaborate on.`}
+      </p>
+
+      <button
+        type="button"
+        className="primary shuffle-btn"
+        onClick={onShuffle}
+        disabled={shuffling || poolSize === 0}
+      >
+        {shuffling ? "Shuffling…" : "Shuffle"}
+      </button>
+
+      {track && (
+        <article key={track.pickedAt} className="track-card">
+          {track.albumArtUrl && (
+            <img
+              src={track.albumArtUrl}
+              alt=""
+              width={160}
+              height={160}
+              className="track-art"
+            />
+          )}
+          <h3 className="track-name">{track.name}</h3>
+          <p className="track-artists">{track.artists}</p>
+          <p className="muted track-album">{track.albumName}</p>
+          <p className="track-source">
+            from{" "}
+            <span className="source-tag">
+              {track.sourceKind === "liked" ? "Liked songs" : track.sourceLabel}
+            </span>
+          </p>
+        </article>
+      )}
+    </section>
+  );
+}
+
 function LibraryStatsView({ stats }: { stats: LibraryStats }) {
   const albumTrackTotal = totalAlbumTracks(stats.albums);
   const playlistTrackTotal = totalPlaylistTracks(stats.playlists);
+  const shufflePlaylists = shufflablePlaylistCount(stats.playlists);
 
   return (
     <section className="library">
       <h2>Your library</h2>
       <p className="muted">
-        Counts for each source — the same song can appear in more than one.
+        Counts for each source. Followed playlists you don&apos;t own are listed
+        but excluded from shuffle.
       </p>
 
       <div className="stats-grid">
@@ -88,12 +152,12 @@ function LibraryStatsView({ stats }: { stats: LibraryStats }) {
           <span className="stat-label">album tracks</span>
         </article>
         <article className="stat">
-          <span className="stat-value">{stats.playlists.length}</span>
-          <span className="stat-label">playlists</span>
+          <span className="stat-value">{shufflePlaylists}</span>
+          <span className="stat-label">shuffle playlists</span>
         </article>
         <article className="stat">
           <span className="stat-value">{playlistTrackTotal}</span>
-          <span className="stat-label">playlist tracks</span>
+          <span className="stat-label">shuffle playlist tracks</span>
         </article>
       </div>
 
@@ -113,9 +177,12 @@ function LibraryStatsView({ stats }: { stats: LibraryStats }) {
         <summary>Playlists ({stats.playlists.length})</summary>
         <ul className="source-list">
           {stats.playlists.map((playlist) => (
-            <li key={playlist.id}>
+            <li key={playlist.id} className={playlist.shufflable ? "" : "excluded"}>
               <span className="source-name">{playlist.name}</span>
-              <span className="source-count">{playlist.trackCount} tracks</span>
+              <span className="source-count">
+                {playlist.trackCount} tracks
+                {!playlist.shufflable && " · not shufflable"}
+              </span>
             </li>
           ))}
         </ul>
@@ -127,6 +194,8 @@ function LibraryStatsView({ stats }: { stats: LibraryStats }) {
 function HomePage() {
   const [profile, setProfile] = useState<SpotifyProfile | null>(null);
   const [library, setLibrary] = useState<LibraryStats | null>(null);
+  const [shuffledTrack, setShuffledTrack] = useState<ShuffledTrack | null>(null);
+  const [shuffling, setShuffling] = useState(false);
   const [loading, setLoading] = useState(true);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -153,14 +222,14 @@ function HomePage() {
 
   const loadLibrary = useCallback(async () => {
     const token = getSavedToken();
-    if (!token) return;
+    if (!token || !profile) return;
 
     const requestId = ++libraryRequestId.current;
     setLibraryLoading(true);
     setErrors([]);
 
     try {
-      const result = await fetchLibraryStats(token);
+      const result = await fetchLibraryStats(token, profile.id);
       if (requestId !== libraryRequestId.current) return;
 
       setLibrary(result.stats);
@@ -177,7 +246,7 @@ function HomePage() {
         setLibraryLoading(false);
       }
     }
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     loadProfile();
@@ -193,6 +262,27 @@ function HomePage() {
     clearSession();
     setProfile(null);
     setLibrary(null);
+    setShuffledTrack(null);
+  }
+
+  async function handleShuffle() {
+    const token = getSavedToken();
+    if (!token || !library) return;
+
+    setShuffling(true);
+    setErrors([]);
+
+    try {
+      setShuffledTrack(
+        await pickRandomTrack(token, library, shuffledTrack?.id),
+      );
+    } catch (err: unknown) {
+      setErrors([
+        err instanceof Error ? err.message : "Could not shuffle a track.",
+      ]);
+    } finally {
+      setShuffling(false);
+    }
   }
 
   if (loading) {
@@ -206,7 +296,7 @@ function HomePage() {
   return (
     <main className="app">
       <h1>Spotify Shuffle</h1>
-      <p className="tagline">Building your shuffle pool</p>
+      <p className="tagline">Random tracks from your library</p>
 
       {errors.length > 0 && (
         <div className="errors">
@@ -248,7 +338,17 @@ function HomePage() {
             </section>
           )}
 
-          {library && !libraryLoading && <LibraryStatsView stats={library} />}
+          {library && !libraryLoading && (
+            <>
+              <ShuffleView
+                library={library}
+                onShuffle={handleShuffle}
+                shuffling={shuffling}
+                track={shuffledTrack}
+              />
+              <LibraryStatsView stats={library} />
+            </>
+          )}
         </>
       ) : (
         <section className="card">
