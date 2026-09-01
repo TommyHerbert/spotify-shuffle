@@ -7,6 +7,7 @@ import {
   totalPlaylistTracks,
 } from "./library";
 import { ShuffledTrack, pickRandomTrack, totalPoolSize } from "./shuffle";
+import { PlayerStatus, useSpotifyPlayer } from "./player";
 import {
   SpotifyProfile,
   beginLogin,
@@ -65,16 +66,33 @@ function CallbackPage({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+function playerStatusLabel(status: PlayerStatus): string {
+  switch (status) {
+    case "loading":
+      return "Connecting player…";
+    case "ready":
+      return "Playing in this browser";
+    case "error":
+      return "Player unavailable";
+    default:
+      return "";
+  }
+}
+
 function ShuffleView({
   library,
   onShuffle,
   shuffling,
   track,
+  playerStatus,
+  playerError,
 }: {
   library: LibraryStats;
   onShuffle: () => void;
   shuffling: boolean;
   track: ShuffledTrack | null;
+  playerStatus: PlayerStatus;
+  playerError: string | null;
 }) {
   const poolSize = totalPoolSize(library);
   const shufflePlaylists = shufflablePlaylistCount(library.playlists);
@@ -90,13 +108,18 @@ function ShuffleView({
           ` ${skippedPlaylists} followed playlist(s) excluded — Spotify only allows shuffling playlists you own or collaborate on.`}
       </p>
 
+      <p className={`player-status player-status--${playerStatus}`}>
+        {playerStatusLabel(playerStatus)}
+        {playerError && ` — ${playerError}`}
+      </p>
+
       <button
         type="button"
         className="primary shuffle-btn"
         onClick={onShuffle}
-        disabled={shuffling || poolSize === 0}
+        disabled={shuffling || poolSize === 0 || playerStatus !== "ready"}
       >
-        {shuffling ? "Shuffling…" : "Shuffle"}
+        {shuffling ? "Shuffling…" : "Shuffle & Play"}
       </button>
 
       {track && (
@@ -200,6 +223,9 @@ function HomePage() {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const libraryRequestId = useRef(0);
+  const loggedIn = profile !== null;
+  const { status: playerStatus, error: playerError, play } =
+    useSpotifyPlayer(loggedIn);
 
   const loadProfile = useCallback(async () => {
     const token = getSavedToken();
@@ -273,9 +299,13 @@ function HomePage() {
     setErrors([]);
 
     try {
-      setShuffledTrack(
-        await pickRandomTrack(token, library, shuffledTrack?.id),
+      const track = await pickRandomTrack(
+        token,
+        library,
+        shuffledTrack?.id,
       );
+      setShuffledTrack(track);
+      await play(track.uri);
     } catch (err: unknown) {
       setErrors([
         err instanceof Error ? err.message : "Could not shuffle a track.",
@@ -345,6 +375,8 @@ function HomePage() {
                 onShuffle={handleShuffle}
                 shuffling={shuffling}
                 track={shuffledTrack}
+                playerStatus={playerStatus}
+                playerError={playerError}
               />
               <LibraryStatsView stats={library} />
             </>

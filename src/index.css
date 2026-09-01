@@ -76,6 +76,23 @@ h1 {
   font-size: 1.05rem;
 }
 
+.player-status {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+}
+
+.player-status--ready {
+  color: #1db954;
+}
+
+.player-status--loading {
+  color: #b3b3b3;
+}
+
+.player-status--error {
+  color: #ff6b6b;
+}
+
 .track-card {
   background: #181818;
   border-radius: 12px;

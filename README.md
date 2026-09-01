@@ -2,15 +2,7 @@
 
 Play a random song from your albums, playlists, and liked songs — inspired by classic iPod shuffle.
 
-## Current status: Library stats
-
-After signing in, the app loads counts for your shuffle sources:
-
-- Total liked songs
-- Each saved album and its track count
-- Each playlist and its track count
-
-This is the metadata needed to pick a random track without downloading every song up front.
+The App picks a random track from your library and plays it in the browser via the Spotify Web Playback SDK. Requires Spotify Premium.
 
 ## Stack
 
@@ -23,7 +15,7 @@ This is the metadata needed to pick a random track without downloading every son
 
 - Node.js 18+
 - A [Spotify Developer app](https://developer.spotify.com/dashboard)
-- Spotify Premium (required for playback later)
+- Spotify Premium (required for in-browser playback)
 
 ## Spotify dashboard setup
 
@@ -34,6 +26,7 @@ In your app settings at [developer.spotify.com/dashboard](https://developer.spot
    http://127.0.0.1:5173/callback
    ```
 2. Save.
+3. Enable the **Web Playback SDK** for this app (in app settings).
 
 For production on your own domain, add an HTTPS URI too, e.g. `https://shuffle.tommyherbert.com/callback`.
 
@@ -44,7 +37,9 @@ npm install
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173** (not `localhost`), click **Log in with Spotify**, approve access, and you should see your library stats.
+Open **http://127.0.0.1:5173** (not `localhost`), click **Log in with Spotify**, approve access, wait for "Playing in this browser", then hit **Shuffle & Play**.
+
+If you logged in before playback was added, log out and back in — new scopes (`streaming`, playback state) are required.
 
 ## Environment
 
@@ -58,7 +53,6 @@ Do **not** put your client secret in this project — the web app doesn't need i
 
 ## Next steps
 
-1. Pick a random track from the combined library
-2. Start playback via Spotify Web API / Web Playback SDK
-3. Add mobile builds (Expo or Capacitor)
+1. Add mobile builds (Expo or Capacitor)
+2. Deploy to `shuffle.tommyherbert.com` with HTTPS
 

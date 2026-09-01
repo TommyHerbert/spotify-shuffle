@@ -6,6 +6,9 @@ const SCOPES = [
   "user-library-read",
   "playlist-read-private",
   "playlist-read-collaborative",
+  "streaming",
+  "user-read-playback-state",
+  "user-modify-playback-state",
 ].join(" ");
 
 export const REDIRECT_URI =
