@@ -66,12 +66,12 @@ function CallbackPage({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-function playerStatusLabel(status: PlayerStatus): string {
+function playerStatusLabel(status: PlayerStatus, isPaused: boolean): string {
   switch (status) {
     case "loading":
       return "Connecting player…";
     case "ready":
-      return "Playing in this browser";
+      return isPaused ? "Paused in this browser" : "Playing in this browser";
     case "error":
       return "Player unavailable";
     default:
@@ -82,17 +82,21 @@ function playerStatusLabel(status: PlayerStatus): string {
 function ShuffleView({
   library,
   onShuffle,
+  onTogglePause,
   shuffling,
   track,
   playerStatus,
   playerError,
+  isPaused,
 }: {
   library: LibraryStats;
   onShuffle: () => void;
+  onTogglePause: () => void;
   shuffling: boolean;
   track: ShuffledTrack | null;
   playerStatus: PlayerStatus;
   playerError: string | null;
+  isPaused: boolean;
 }) {
   const poolSize = totalPoolSize(library);
   const shufflePlaylists = shufflablePlaylistCount(library.playlists);
@@ -109,18 +113,32 @@ function ShuffleView({
       </p>
 
       <p className={`player-status player-status--${playerStatus}`}>
-        {playerStatusLabel(playerStatus)}
+        {playerStatusLabel(playerStatus, isPaused)}
         {playerError && ` — ${playerError}`}
       </p>
 
-      <button
-        type="button"
-        className="primary shuffle-btn"
-        onClick={onShuffle}
-        disabled={shuffling || poolSize === 0 || playerStatus !== "ready"}
-      >
-        {shuffling ? "Shuffling…" : "Shuffle & Play"}
-      </button>
+      <div className="controls">
+        <button
+          type="button"
+          className="primary shuffle-btn"
+          onClick={onShuffle}
+          disabled={shuffling || poolSize === 0 || playerStatus !== "ready"}
+        >
+          {shuffling ? "Shuffling…" : track ? "Shuffle" : "Shuffle & Play"}
+        </button>
+
+        {track && playerStatus === "ready" && (
+          <div className="playback-controls">
+            <button
+              type="button"
+              onClick={onTogglePause}
+              disabled={shuffling}
+            >
+              {isPaused ? "Resume" : "Pause"}
+            </button>
+          </div>
+        )}
+      </div>
 
       {track && (
         <article key={track.pickedAt} className="track-card">
@@ -223,9 +241,45 @@ function HomePage() {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const libraryRequestId = useRef(0);
+  const shufflingRef = useRef(false);
+  const shuffledTrackRef = useRef<ShuffledTrack | null>(null);
+  const playRef = useRef<(uri: string) => Promise<void>>(() =>
+    Promise.reject(new Error("Player not ready")),
+  );
   const loggedIn = profile !== null;
-  const { status: playerStatus, error: playerError, play } =
-    useSpotifyPlayer(loggedIn);
+
+  shuffledTrackRef.current = shuffledTrack;
+
+  const shuffleAndPlay = useCallback(async () => {
+    const token = getSavedToken();
+    if (!token || !library || shufflingRef.current) return;
+
+    shufflingRef.current = true;
+    setShuffling(true);
+    setErrors([]);
+
+    try {
+      const track = await pickRandomTrack(
+        token,
+        library,
+        shuffledTrackRef.current?.id,
+      );
+      setShuffledTrack(track);
+      await playRef.current(track.uri);
+    } catch (err: unknown) {
+      setErrors([
+        err instanceof Error ? err.message : "Could not shuffle a track.",
+      ]);
+    } finally {
+      shufflingRef.current = false;
+      setShuffling(false);
+    }
+  }, [library]);
+
+  const { status: playerStatus, error: playerError, isPaused, play, togglePause } =
+    useSpotifyPlayer(loggedIn, shuffleAndPlay);
+
+  playRef.current = play;
 
   const loadProfile = useCallback(async () => {
     const token = getSavedToken();
@@ -284,35 +338,21 @@ function HomePage() {
     }
   }, [profile, loadLibrary]);
 
+  async function handleTogglePause() {
+    try {
+      await togglePause();
+    } catch (err: unknown) {
+      setErrors([
+        err instanceof Error ? err.message : "Could not toggle playback.",
+      ]);
+    }
+  }
+
   function handleLogout() {
     clearSession();
     setProfile(null);
     setLibrary(null);
     setShuffledTrack(null);
-  }
-
-  async function handleShuffle() {
-    const token = getSavedToken();
-    if (!token || !library) return;
-
-    setShuffling(true);
-    setErrors([]);
-
-    try {
-      const track = await pickRandomTrack(
-        token,
-        library,
-        shuffledTrack?.id,
-      );
-      setShuffledTrack(track);
-      await play(track.uri);
-    } catch (err: unknown) {
-      setErrors([
-        err instanceof Error ? err.message : "Could not shuffle a track.",
-      ]);
-    } finally {
-      setShuffling(false);
-    }
   }
 
   if (loading) {
@@ -372,11 +412,13 @@ function HomePage() {
             <>
               <ShuffleView
                 library={library}
-                onShuffle={handleShuffle}
+                onShuffle={shuffleAndPlay}
+                onTogglePause={handleTogglePause}
                 shuffling={shuffling}
                 track={shuffledTrack}
                 playerStatus={playerStatus}
                 playerError={playerError}
+                isPaused={isPaused}
               />
               <LibraryStatsView stats={library} />
             </>
