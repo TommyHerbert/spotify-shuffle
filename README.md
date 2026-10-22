@@ -54,6 +54,8 @@ npx expo start
 
 Install **Expo Go for SDK 58** on the phone, then scan the QR code. The phone and computer need to be on the same Wi-Fi.
 
+Once the app is open on the phone, you can reload it after a code change by pressing **r** in the terminal where `npx expo start` is running.
+
 Expo Go only runs one SDK, and it must match this project (`expo` ~58 in `mobile/package.json`).
 
 **Android.** The Play Store copy often lags a new SDK and shows "Project is incompatible with this version of Expo Go" even when it tells you to update from the store. Uninstall that copy, then install the SDK 58 build from [expo.dev/go](https://expo.dev/go) or the [Expo Go 58.0.5 APK](https://github.com/expo/expo-go-releases/releases/download/Expo-Go-58.0.5/Expo-Go-58.0.5.apk). Android will ask you to allow installs from the browser. Restart `npx expo start` and scan again.
