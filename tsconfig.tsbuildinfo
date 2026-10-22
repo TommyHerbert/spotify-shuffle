@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/library.ts","./src/main.tsx","./src/player.ts","./src/shuffle.ts","./src/spotify-player.d.ts","./src/spotify.ts","./src/vite-env.d.ts"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/main.tsx","./src/player.ts","./src/spotify-player.d.ts","./src/spotify.ts","./src/vite-env.d.ts","./shared/index.ts","./shared/library.ts","./shared/shuffle.ts"],"version":"5.9.3"}

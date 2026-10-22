@@ -11,7 +11,7 @@ The App picks a random track from your library and plays it in the browser via t
 | Web | Vite + React + TypeScript | Desktop player, OAuth with PKCE |
 | Mobile | Expo (SDK 58) in `mobile/` | Shared path toward iOS and Android |
 
-The phone app is a placeholder so far. Shuffle and playback still live in the web app.
+Library fetching and shuffle selection live in `shared/` and are imported by both apps. Login, token storage, and in-browser playback stay in the web app.
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ If you logged in before playback was added, log out and back in — new scopes (
 
 ## Run on a phone
 
-The Expo app is in `mobile/`. It does not talk to Spotify yet. This only checks that the phone can load the dev build.
+The Expo app is in `mobile/`. It imports the shared shuffle helpers and shows a sample pool size. It does not log in or play music yet.
 
 ```bash
 cd mobile
@@ -72,7 +72,7 @@ Do **not** put your client secret in this project — the web app doesn't need i
 
 ## Next steps
 
-1. Share shuffle and Spotify API code between the web app and `mobile/`
+1. Log in from the phone and load the real library through `shared/`
 2. On phones, play through the Spotify app so audio continues with the screen locked
 3. Deploy the web app to `shuffle.tommyherbert.com` with HTTPS
 

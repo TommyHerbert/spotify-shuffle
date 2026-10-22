@@ -5,8 +5,8 @@ import {
   shufflablePlaylistCount,
   totalAlbumTracks,
   totalPlaylistTracks,
-} from "./library";
-import { ShuffledTrack, pickRandomTrack, totalPoolSize } from "./shuffle";
+} from "../shared/library";
+import { ShuffledTrack, pickRandomTrack, totalPoolSize } from "../shared/shuffle";
 import { PlayerStatus, useSpotifyPlayer } from "./player";
 import {
   SpotifyProfile,
