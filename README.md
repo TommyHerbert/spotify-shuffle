@@ -45,7 +45,7 @@ If you logged in before playback was added, log out and back in — new scopes (
 
 ## Run on a phone
 
-The Expo app is in `mobile/`. It can log in with Spotify, load your library through `shared/`, and show the counts. It does not play music yet.
+The Expo app is in `mobile/`. It can log in with Spotify, load your library through `shared/`, show the counts, and open a shuffled track in the Spotify app. Pause/auto-advance from inside this app still needs Spotify App Remote.
 
 ```bash
 cd mobile
@@ -91,6 +91,6 @@ Do **not** put your client secret in this project — the web app doesn't need i
 
 ## Next steps
 
-1. On phones, play through the Spotify app so audio continues with the screen locked
+1. Control playback from the phone app via Spotify App Remote (pause, auto-advance without leaving Shuffle)
 2. Deploy the web app to `shuffle.tommyherbert.com` with HTTPS
 

@@ -1,11 +1,14 @@
 import {
   fetchLibraryStats,
   fetchProfile,
+  pickRandomTrack,
   shufflablePlaylistCount,
   SPOTIFY_SCOPES,
   totalAlbumTracks,
   totalPlaylistTracks,
+  totalPoolSize,
   type LibraryStats,
+  type ShuffledTrack,
   type SpotifyProfile,
 } from "../shared";
 import { exchangeCodeAsync, useAuthRequest } from "expo-auth-session";
@@ -14,6 +17,8 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -71,15 +76,37 @@ function StatRow({ label, value }: { label: string; value: number }) {
   );
 }
 
+function TrackCard({ track }: { track: ShuffledTrack }) {
+  return (
+    <View style={styles.trackCard}>
+      {track.albumArtUrl ? (
+        <Image source={{ uri: track.albumArtUrl }} style={styles.trackArt} />
+      ) : null}
+      <Text style={styles.trackName}>{track.name}</Text>
+      <Text style={styles.trackArtists}>{track.artists}</Text>
+      <Text style={styles.muted}>{track.albumName}</Text>
+      <Text style={styles.trackSource}>
+        from{" "}
+        {track.sourceKind === "liked" ? "Liked songs" : track.sourceLabel}
+      </Text>
+    </View>
+  );
+}
+
 export default function App() {
   const [profile, setProfile] = useState<SpotifyProfile | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [library, setLibrary] = useState<LibraryStats | null>(null);
+  const [track, setTrack] = useState<ShuffledTrack | null>(null);
   const [loading, setLoading] = useState(true);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [shuffling, setShuffling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const libraryRequestId = useRef(0);
+  const shufflingRef = useRef(false);
+  const trackRef = useRef<ShuffledTrack | null>(null);
+  trackRef.current = track;
 
   const [request] = useAuthRequest(
     {
@@ -185,14 +212,44 @@ export default function App() {
     }
   }
 
+  async function handleShuffleAndPlay() {
+    if (!accessToken || !library || shufflingRef.current) return;
+
+    shufflingRef.current = true;
+    setShuffling(true);
+    setError(null);
+
+    try {
+      const next = await pickRandomTrack(
+        accessToken,
+        library,
+        trackRef.current?.id,
+      );
+      setTrack(next);
+      await Linking.openURL(next.uri);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not shuffle or open Spotify.",
+      );
+    } finally {
+      shufflingRef.current = false;
+      setShuffling(false);
+    }
+  }
+
   async function handleLogout() {
     libraryRequestId.current += 1;
     await clearSession();
     setAccessToken(null);
     setProfile(null);
     setLibrary(null);
+    setTrack(null);
     setError(null);
   }
+
+  const poolSize = library ? totalPoolSize(library) : 0;
 
   return (
     <View style={styles.container}>
@@ -214,7 +271,31 @@ export default function App() {
               <Text style={styles.muted}>Loading library…</Text>
             </View>
           ) : library ? (
-            <LibraryCounts stats={library} />
+            <>
+              <LibraryCounts stats={library} />
+              <Text style={styles.muted}>
+                {poolSize.toLocaleString()} tracks in the shuffle pool. Playback
+                opens in the Spotify app so it can continue with the screen locked.
+              </Text>
+              <Pressable
+                style={[
+                  styles.button,
+                  styles.primary,
+                  (shuffling || poolSize === 0) && styles.disabled,
+                ]}
+                disabled={shuffling || poolSize === 0}
+                onPress={() => void handleShuffleAndPlay()}
+              >
+                <Text style={styles.primaryLabel}>
+                  {shuffling
+                    ? "Shuffling…"
+                    : track
+                      ? "Shuffle"
+                      : "Shuffle & Play"}
+                </Text>
+              </Pressable>
+              {track ? <TrackCard track={track} /> : null}
+            </>
           ) : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <Pressable style={styles.button} onPress={() => void handleLogout()}>
@@ -333,6 +414,35 @@ const styles = StyleSheet.create({
   statLabel: {
     color: "#b3b3b3",
     fontSize: 14,
+  },
+  trackCard: {
+    width: "100%",
+    marginTop: 24,
+    alignItems: "center",
+  },
+  trackArt: {
+    width: 160,
+    height: 160,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: "#282828",
+  },
+  trackName: {
+    color: "#fafafa",
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  trackArtists: {
+    color: "#fafafa",
+    fontSize: 16,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  trackSource: {
+    color: "#1db954",
+    marginTop: 8,
+    textAlign: "center",
   },
   button: {
     marginTop: 20,
