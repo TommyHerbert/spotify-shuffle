@@ -45,22 +45,39 @@ If you logged in before playback was added, log out and back in — new scopes (
 
 ## Run on a phone
 
-The Expo app is in `mobile/`. It imports the shared shuffle helpers and shows a sample pool size. It does not log in or play music yet.
+The Expo app is in `mobile/`. It can log in with Spotify and show your display name. It does not load your library or play music yet.
 
 ```bash
 cd mobile
 npx expo start
 ```
 
-Install **Expo Go for SDK 58** on the phone, then scan the QR code. The phone and computer need to be on the same Wi-Fi.
+The phone runs a development build of this app, not Expo Go. Expo Go cannot register a redirect Spotify will send the login back to.
 
-Once the app is open on the phone, you can reload it after a code change by pressing **r** in the terminal where `npx expo start` is running.
+Copy `mobile/.env.example` to `mobile/.env` and set `EXPO_PUBLIC_SPOTIFY_CLIENT_ID` to the same client ID as the web app.
 
-Expo Go only runs one SDK, and it must match this project (`expo` ~58 in `mobile/package.json`).
+Add this redirect URI in the [Spotify dashboard](https://developer.spotify.com/dashboard), then save:
 
-**Android.** The Play Store copy often lags a new SDK and shows "Project is incompatible with this version of Expo Go" even when it tells you to update from the store. Uninstall that copy, then install the SDK 58 build from [expo.dev/go](https://expo.dev/go) or the [Expo Go 58.0.5 APK](https://github.com/expo/expo-go-releases/releases/download/Expo-Go-58.0.5/Expo-Go-58.0.5.apk). Android will ask you to allow installs from the browser. Restart `npx expo start` and scan again.
+```
+spotify-shuffle://callback
+```
 
-**iPhone.** App Store Expo Go stops at SDK 54, so it cannot open this project. A physical iPhone needs a development build (or an Expo Go build through TestFlight). That is also what locked-screen playback will need later, because Spotify audio has to run in the Spotify app, not in Expo Go.
+**Android.** Turn on Developer options and USB debugging, plug the phone in, then install the app once:
+
+```bash
+cd mobile
+npx expo run:android
+```
+
+That build needs a JDK 17 or 21 and the Android SDK. It installs **Spotify Shuffle** on the phone. After that, start the dev server and open that installed app (the phone and computer need to be on the same Wi-Fi):
+
+```bash
+npx expo start
+```
+
+Once the app is open on the phone, you can reload it after a code change by pressing **r** in the terminal where `npx expo start` is running. Restart the dev server after changing `mobile/.env`.
+
+**iPhone.** A development build needs a Mac or a cloud build. App Store Expo Go cannot open this project. Locked-screen playback will need that build too, because Spotify audio has to run in the Spotify app.
 
 ## Environment
 
@@ -74,7 +91,7 @@ Do **not** put your client secret in this project — the web app doesn't need i
 
 ## Next steps
 
-1. Log in from the phone and load the real library through `shared/`
+1. Load the real library on the phone through `shared/`
 2. On phones, play through the Spotify app so audio continues with the screen locked
 3. Deploy the web app to `shuffle.tommyherbert.com` with HTTPS
 

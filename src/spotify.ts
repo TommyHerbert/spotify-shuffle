@@ -1,15 +1,13 @@
+import { SPOTIFY_SCOPES } from "../shared/scopes";
+import { fetchProfile as fetchSpotifyProfile } from "../shared/profile";
+import type { SpotifyProfile } from "../shared/profile";
+
 const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
-const SCOPES = [
-  "user-read-private",
-  "user-read-email",
-  "user-library-read",
-  "playlist-read-private",
-  "playlist-read-collaborative",
-  "streaming",
-  "user-read-playback-state",
-  "user-modify-playback-state",
-].join(" ");
+const SCOPES = SPOTIFY_SCOPES.join(" ");
+
+export type { SpotifyProfile };
+export const fetchProfile = fetchSpotifyProfile;
 
 export const REDIRECT_URI =
   typeof window !== "undefined"
@@ -99,26 +97,6 @@ export async function exchangeCodeForToken(
   }
 
   sessionStorage.removeItem("spotify_pkce_verifier");
-  return response.json();
-}
-
-export type SpotifyProfile = {
-  display_name: string;
-  email?: string;
-  id: string;
-  images?: { url: string }[];
-};
-
-export async function fetchProfile(accessToken: string): Promise<SpotifyProfile> {
-  const response = await fetch("https://api.spotify.com/v1/me", {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Profile fetch failed: ${text}`);
-  }
-
   return response.json();
 }
 
