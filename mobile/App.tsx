@@ -1,11 +1,21 @@
-import { fetchProfile, SPOTIFY_SCOPES, type SpotifyProfile } from "../shared";
+import {
+  fetchLibraryStats,
+  fetchProfile,
+  shufflablePlaylistCount,
+  SPOTIFY_SCOPES,
+  totalAlbumTracks,
+  totalPlaylistTracks,
+  type LibraryStats,
+  type SpotifyProfile,
+} from "../shared";
 import { exchangeCodeAsync, useAuthRequest } from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -28,11 +38,48 @@ const discovery = {
 
 const redirectUri = "spotify-shuffle://callback";
 
+function LibraryCounts({ stats }: { stats: LibraryStats }) {
+  const albumTrackTotal = totalAlbumTracks(stats.albums);
+  const playlistTrackTotal = totalPlaylistTracks(stats.playlists);
+  const shufflePlaylists = shufflablePlaylistCount(stats.playlists);
+  const skippedPlaylists = stats.playlists.length - shufflePlaylists;
+
+  return (
+    <View style={styles.library}>
+      <Text style={styles.sectionTitle}>Your library</Text>
+      <StatRow label="liked songs" value={stats.likedTracksCount} />
+      <StatRow label="saved albums" value={stats.albums.length} />
+      <StatRow label="album tracks" value={albumTrackTotal} />
+      <StatRow label="shuffle playlists" value={shufflePlaylists} />
+      <StatRow label="shuffle playlist tracks" value={playlistTrackTotal} />
+      {skippedPlaylists > 0 ? (
+        <Text style={styles.muted}>
+          {skippedPlaylists} followed playlist(s) excluded — Spotify only allows
+          shuffling playlists you own or collaborate on.
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function StatRow({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={styles.statRow}>
+      <Text style={styles.statValue}>{value.toLocaleString()}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
 export default function App() {
   const [profile, setProfile] = useState<SpotifyProfile | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [library, setLibrary] = useState<LibraryStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [libraryLoading, setLibraryLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const libraryRequestId = useRef(0);
 
   const [request] = useAuthRequest(
     {
@@ -53,6 +100,7 @@ export default function App() {
     loadSession(clientId)
       .then(async (session) => {
         if (!session) return;
+        setAccessToken(session.accessToken);
         setProfile(await fetchProfile(session.accessToken));
       })
       .catch((err: unknown) => {
@@ -60,6 +108,37 @@ export default function App() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!profile || !accessToken) {
+      setLibrary(null);
+      return;
+    }
+
+    const requestId = ++libraryRequestId.current;
+    setLibraryLoading(true);
+    setError(null);
+
+    fetchLibraryStats(accessToken, profile.id)
+      .then((result) => {
+        if (requestId !== libraryRequestId.current) return;
+        setLibrary(result.stats);
+        if (result.errors.length > 0) {
+          setError(result.errors.join("\n"));
+        }
+      })
+      .catch((err: unknown) => {
+        if (requestId !== libraryRequestId.current) return;
+        setError(
+          err instanceof Error ? err.message : "Could not load library stats.",
+        );
+      })
+      .finally(() => {
+        if (requestId === libraryRequestId.current) {
+          setLibraryLoading(false);
+        }
+      });
+  }, [profile, accessToken]);
 
   async function handleLogin() {
     if (!request?.url || !request.codeVerifier) return;
@@ -97,6 +176,7 @@ export default function App() {
       );
       const session = sessionFromToken(token);
       await saveSession(session);
+      setAccessToken(session.accessToken);
       setProfile(await fetchProfile(session.accessToken));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed.");
@@ -106,8 +186,12 @@ export default function App() {
   }
 
   async function handleLogout() {
+    libraryRequestId.current += 1;
     await clearSession();
+    setAccessToken(null);
     setProfile(null);
+    setLibrary(null);
+    setError(null);
   }
 
   return (
@@ -116,15 +200,27 @@ export default function App() {
       {loading ? (
         <ActivityIndicator color="#1db954" />
       ) : profile ? (
-        <View style={styles.card}>
+        <ScrollView
+          contentContainerStyle={styles.card}
+          style={styles.scroll}
+        >
           <Text style={styles.body}>
             Logged in as <Text style={styles.name}>{profile.display_name}</Text>
           </Text>
           {profile.email ? <Text style={styles.muted}>{profile.email}</Text> : null}
+          {libraryLoading ? (
+            <View style={styles.loadingBlock}>
+              <ActivityIndicator color="#1db954" />
+              <Text style={styles.muted}>Loading library…</Text>
+            </View>
+          ) : library ? (
+            <LibraryCounts stats={library} />
+          ) : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
           <Pressable style={styles.button} onPress={() => void handleLogout()}>
             <Text style={styles.buttonLabel}>Log out</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       ) : (
         <View style={styles.card}>
           {!clientId ? (
@@ -172,10 +268,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 24,
   },
+  scroll: {
+    width: "100%",
+    maxWidth: 420,
+  },
   card: {
     width: "100%",
     maxWidth: 420,
     alignItems: "center",
+    paddingBottom: 24,
   },
   body: {
     color: "#fafafa",
@@ -199,6 +300,39 @@ const styles = StyleSheet.create({
     color: "#ff6b6b",
     marginTop: 12,
     textAlign: "center",
+  },
+  loadingBlock: {
+    marginTop: 24,
+    alignItems: "center",
+    gap: 8,
+  },
+  library: {
+    width: "100%",
+    marginTop: 24,
+  },
+  sectionTitle: {
+    color: "#fafafa",
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  statRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#282828",
+  },
+  statValue: {
+    color: "#1db954",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  statLabel: {
+    color: "#b3b3b3",
+    fontSize: 14,
   },
   button: {
     marginTop: 20,

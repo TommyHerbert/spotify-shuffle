@@ -45,7 +45,7 @@ If you logged in before playback was added, log out and back in — new scopes (
 
 ## Run on a phone
 
-The Expo app is in `mobile/`. It can log in with Spotify and show your display name. It does not load your library or play music yet.
+The Expo app is in `mobile/`. It can log in with Spotify, load your library through `shared/`, and show the counts. It does not play music yet.
 
 ```bash
 cd mobile
@@ -91,7 +91,6 @@ Do **not** put your client secret in this project — the web app doesn't need i
 
 ## Next steps
 
-1. Load the real library on the phone through `shared/`
-2. On phones, play through the Spotify app so audio continues with the screen locked
-3. Deploy the web app to `shuffle.tommyherbert.com` with HTTPS
+1. On phones, play through the Spotify app so audio continues with the screen locked
+2. Deploy the web app to `shuffle.tommyherbert.com` with HTTPS
 
